@@ -1,5 +1,14 @@
 var globalInvokeLaterStack = []
 
+var is = function(type) {
+  return function(item) {
+    typeof item === type
+  }
+}
+
+var isFn = is("function")
+var isString = is("string")
+
 export function app(props) {
   var appState
   var appView = props.view
@@ -12,7 +21,7 @@ export function app(props) {
   var renderLock
 
   appMixins.concat(props).map(function(mixin) {
-    mixin = typeof mixin === "function" ? mixin(emit) : mixin
+    mixin = isFn(mixin) ? mixin(emit) : mixin
 
     Object.keys(mixin.events || []).map(function(key) {
       appEvents[key] = (appEvents[key] || []).concat(mixin.events[key])
@@ -34,13 +43,13 @@ export function app(props) {
       var action = withActions[key]
       var name = lastName ? lastName + "." + key : key
 
-      if (typeof action === "function") {
+      if (isFn(action)) {
         actions[key] = function(data) {
           emit("action", { name: name, data: data })
 
           var result = emit("resolve", action(appState, appActions, data))
 
-          return typeof result === "function" ? result(update) : update(result)
+          return isFn(result) ? result(update) : update(result)
         }
       } else {
         initialize(actions[key] || (actions[key] = {}), action, name)
@@ -66,7 +75,7 @@ export function app(props) {
   }
 
   function update(withState) {
-    if (typeof withState === "function") {
+    if (isFn(withState)) {
       return update(withState(appState))
     }
     if (withState && (withState = emit("update", merge(appState, withState)))) {
@@ -108,7 +117,7 @@ export function app(props) {
   }
 
   function createElement(node, isSVG) {
-    if (typeof node === "string") {
+    if (isString(node)) {
       var element = document.createTextNode(node)
     } else {
       var element = (isSVG = isSVG || node.tag === "svg")
@@ -144,7 +153,7 @@ export function app(props) {
         element[name] = value
       } catch (_) {}
 
-      if (typeof value !== "function") {
+      if (!isFn(value)) {
         if (value) {
           element.setAttribute(name, value)
         } else {
@@ -260,7 +269,7 @@ export function app(props) {
         }
       }
     } else if (element && node !== element.nodeValue) {
-      if (typeof node === "string" && typeof oldNode === "string") {
+      if (isString(node) && isString(oldNode)) {
         element.nodeValue = node
       } else {
         element = parent.insertBefore(
